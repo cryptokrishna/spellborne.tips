@@ -1,0 +1,156 @@
+// Spellborne Profiler Website - Full Site
+
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
+const API_BASE = "https://api.spellborne.gg"; // Placeholder - update with real base URL
+const API_TOKEN = "c993e16dcd22c7fda8dd910312f1fc5696b1973be4b5f3e8d551c61ab0bb7149";
+
+export default function SpellborneProfiler() {
+  const [username, setUsername] = useState("");
+  const [playerData, setPlayerData] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [matchHistory, setMatchHistory] = useState([]);
+  const [characters, setCharacters] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchPlayerProfile = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE}/players/${username}`, {
+        headers: { Authorization: `Bearer ${API_TOKEN}` },
+      });
+      setPlayerData(res.data);
+      fetchMatchHistory();
+    } catch (err) {
+      console.error("Failed to fetch player data", err);
+      setPlayerData(null);
+    }
+    setLoading(false);
+  };
+
+  const fetchLeaderboard = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/leaderboard`, {
+        headers: { Authorization: `Bearer ${API_TOKEN}` },
+      });
+      setLeaderboard(res.data);
+    } catch (err) {
+      console.error("Failed to fetch leaderboard", err);
+    }
+  };
+
+  const fetchMatchHistory = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/players/${username}/matches`, {
+        headers: { Authorization: `Bearer ${API_TOKEN}` },
+      });
+      setMatchHistory(res.data);
+    } catch (err) {
+      console.error("Failed to fetch match history", err);
+    }
+  };
+
+  const fetchCharacters = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/characters`, {
+        headers: { Authorization: `Bearer ${API_TOKEN}` },
+      });
+      setCharacters(res.data);
+    } catch (err) {
+      console.error("Failed to fetch characters", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeaderboard();
+    fetchCharacters();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-black text-white p-6">
+      <h1 className="text-3xl font-bold mb-6">Spellborne Profiler</h1>
+
+      <div className="flex gap-2 mb-6">
+        <Input
+          className="w-64"
+          placeholder="Enter Username..."
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <Button onClick={fetchPlayerProfile} disabled={loading}>
+          {loading ? "Loading..." : "Search"}
+        </Button>
+      </div>
+
+      <Tabs defaultValue="profile">
+        <TabsList className="mb-4">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+          <TabsTrigger value="history">Match History</TabsTrigger>
+          <TabsTrigger value="characters">Characters</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="profile">
+          {playerData && (
+            <Card className="max-w-xl">
+              <CardContent>
+                <h2 className="text-2xl font-semibold">{playerData.username}</h2>
+                <p>Rank: {playerData.rank}</p>
+                <p>Win Rate: {playerData.winRate}%</p>
+                <p>Total Matches: {playerData.totalMatches}</p>
+                <p>Favorite Team: {playerData.favoriteTeam?.join(", ")}</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="leaderboard">
+          <div className="grid gap-2">
+            {leaderboard.map((entry, idx) => (
+              <Card key={entry.username}>
+                <CardContent>
+                  <p className="font-semibold">#{idx + 1} - {entry.username}</p>
+                  <p>Rank: {entry.rank}, Wins: {entry.wins}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <div className="grid gap-2">
+            {matchHistory.map((match, idx) => (
+              <Card key={idx}>
+                <CardContent>
+                  <p>{match.date} - {match.result}</p>
+                  <p>Opponent: {match.opponent}</p>
+                  <p>Damage Dealt: {match.damageDealt}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="characters">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {characters.map((char) => (
+              <Card key={char.id}>
+                <CardContent>
+                  <h3 className="font-bold text-lg">{char.name}</h3>
+                  <p>Element: {char.element}</p>
+                  <p>Class: {char.class}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
